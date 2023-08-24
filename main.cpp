@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <vector>
 #include <algorithm>
+#include <fstream>
+#include "color_console.hpp" //https://github.com/memoryInject/color-console
+
 namespace console // getch function for linux
 {
     static struct termios old, current;
@@ -88,6 +91,43 @@ namespace levenshtein_sort // sorts std::vector<std::string> by levenshtein dist
     {
         std::sort(words.begin(), words.end(), [&](const std::string &a, const std::string &b)
                   { return cmp(a, b, target); });
+    }
+};
+class app
+{
+private:
+    std::vector<std::string> all_files;
+    ColorConsole console;
+
+public:
+    void print_highlighted(std::string str)
+    {
+        std::cout << console.get(str, {console.bg_black, console.bold, console.bg_white});
+    }
+    void print_highlighted(char ch)
+    {
+        std::string _str;
+        _str.push_back(ch);
+        print_highlighted(_str);
+    }
+    void init_files()
+    {
+        system("sudo ./files.bash");
+        std::ifstream fin("file_list.txt");
+        for (std::string tmp; fin >> tmp;)
+        {
+            all_files.push_back(tmp);
+        }
+    }
+    app()
+    {
+        init_files();
+        while (true)
+        {
+            char ch = console::getch();
+            system("clear");
+            print_highlighted(ch);
+        }
     }
 };
 int main()
