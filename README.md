@@ -1,4 +1,5 @@
 # file_searcher
 file searcher using c++
+compile using sudo on linux, make sure you have nautilus installed
 
-(https://github.com/Luijika711/file_searcher/assets/88895321/e7b088b3-7ef7-4632-a13b-0d9471301519)
+![file_searcher_video](https://github.com/Luijika711/file_searcher/assets/88895321/bbef49fb-2852-469e-925d-1b139b6d8167)
