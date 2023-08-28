@@ -10,7 +10,7 @@
 #include <mutex>
 #include <math.h>
 #include <stdio.h>
-
+ 
 namespace console // getch function for linux
 {
     static struct termios old, current;
