@@ -2,14 +2,15 @@
 #include <iostream>
 #include <stdlib.h>
 #include <vector>
-#include <algorithm>
 #include <fstream>
 #include "color_console.hpp" //https://github.com/memoryInject/color-console
-#include <unordered_map>
-#include <thread>
-#include <mutex>
 #include <math.h>
 #include <stdio.h>
+
+#define ESC_KEY 27
+#define ENTER_KEY 10
+#define MOD (INT32_MAX - 1)
+#define hash_multiply 31
 
 namespace console // getch function for linux
 {
@@ -31,7 +32,8 @@ namespace console // getch function for linux
     }
     void resetTermios(void)
     {
-        tcsetattr(0, TCSANOW, &old);
+        std::vector
+            tcsetattr(0, TCSANOW, &old);
     }
     char getch_(int echo)
     {
@@ -58,6 +60,7 @@ private:
     ColorConsole console;
     std::string str;
     std::string file_im_searching;
+    std::ifstream fin;
 
 public:
     void print_highlighted(std::string str)
@@ -70,68 +73,81 @@ public:
         _str.push_back(ch);
         print_highlighted(_str);
     }
-    bool isSubstring(const std::string &str1, const std::string &str2)
+    bool is_match(int i, std::string str1, std::string str2)
     {
-        const int MOD = INT32_MAX - 1;
+        bool match = true;
+        for (int j = 0; j < str1.size(); ++j)
+        {
+            if (str2[i + j] != str1[j])
+            {
+                return false;
+            }
+        }
+        if (match)
+        {
+            return true;
+        }
+    }
+    int update_hash(int currentHash, std::string str1, std::string str2, int i)
+    {
+        int p = static_cast<int>(std::pow(hash_multiply, (int)((str1.size()) - 1)));
+
+        currentHash = (currentHash - str2[i] * p) % MOD;
+        if (currentHash < 0)
+        {
+            currentHash += MOD;
+        }
+
+        return (currentHash * hash_multiply + str2[i + (int)str1.size()]) % MOD;
+    }
+    bool isSubstring(const std::string &str1, const std::string &str2) // function that returns true if str1 is a substring of str2
+    {
+
         int len1 = str1.length();
         int len2 = str2.length();
 
         int hashStr1 = 0;
         for (char c : str1)
         {
-            hashStr1 = (hashStr1 * 31 + c) % MOD;
+            hashStr1 = (hashStr1 * hash_multiply + c) % MOD;
         }
 
         int currentHash = 0;
         for (int i = 0; i < len1; ++i)
         {
-            currentHash = (currentHash * 31 + str2[i]) % MOD;
+            currentHash = (currentHash * hash_multiply + str2[i]) % MOD;
         }
 
         for (int i = 0; i <= len2 - len1; ++i)
         {
             if (hashStr1 == currentHash)
             {
-                bool match = true;
-                for (int j = 0; j < len1; ++j)
-                {
-                    if (str2[i + j] != str1[j])
-                    {
-                        match = false;
-                        break;
-                    }
-                }
-                if (match)
+                if (is_match(i, str1, str2))
                 {
                     return true;
                 }
             }
-            if (i < len2 - len1)
+            if (i < str2.size() - str1.size())
             {
-                currentHash = (currentHash - str2[i] * static_cast<int>(std::pow(31, len1 - 1))) % MOD;
-                if (currentHash < 0)
-                {
-                    currentHash += MOD;
-                }
-                currentHash = (currentHash * 31 + str2[i + len1]) % MOD;
+                currentHash = update_hash(currentHash, str1, str2, i);
             }
         }
-
         return false;
     }
-    app()
+    void start()
     {
-        int page_nr = 1;
-
         system("clear");
         std::cout << "type the name of the file you are searching: ";
         std::cin >> file_im_searching;
         system("sudo chmod +x files.bash");
         system("sudo ./files.bash > /dev/null 2>&1");
-        std::ifstream fin("file_list.txt");
-
+        fin = std::ifstream("file_list.txt");
+    }
+    app()
+    {
+        start();
+        int page_nr = 1;
         int selected_index = 0;
-
         while (fin >> str)
         {
             if (isSubstring(file_im_searching, str))
@@ -151,6 +167,10 @@ public:
             system("clear");
             print_highlighted("press w/s to go up/down | press a/d to go next/previous page | press enter to open file | press esc to exit\n\n");
 
+            //page_nr is the current page number
+            //we have 10 lines per page
+            //selected_index is the current highlighted filepath
+
             for (int i = (page_nr * 10 - 10); i < 10 * page_nr - 1; ++i)
             {
                 if (i == selected_index)
@@ -165,44 +185,44 @@ public:
             }
 
             char ch = console::getch();
-            if (ch == 27) // esc key
+            switch (ch)
             {
+            case ESC_KEY:
                 exit(0);
-            }
-            else if (ch == 10)
-            {
+                break;
+
+            case ENTER_KEY:
                 enter_count++;
                 if (enter_count != 1)
                     system(("sudo nautilus " + file_names[selected_index] + "> /dev/null 2>&1 &").c_str());
-            }
-            else if (ch == 'w' && selected_index > 0)
-            {
-                selected_index--;
+                break;
+
+            case 'w'://moves selected_index up,if it's already at the edge nothing happens
+                if (selected_index)
+                    selected_index--;
                 if (selected_index / 10 + 1 != page_nr)
                     selected_index++;
-            }
-            else if (ch == 's')
-            {
+                break;
+            case 's'://moves selected_index down,if it's already at the edge nothing happens
                 selected_index++;
                 if (selected_index / 10 + 1 != page_nr)
                     selected_index -= 2;
-            }
-            if (ch == 'a')
-            {
+                break;
+            case 'a'://changes page
                 if (page_nr > 1)
                 {
                     page_nr--;
                     selected_index -= 10;
                 }
-            }
-            else if (ch == 'd')
-            {
+                break;
+            case 'd'://changes page
                 if (((page_nr + 1) * 10) < file_names.size())
                 {
                     page_nr++;
                     selected_index += 10;
                     selected_index %= file_names.size();
                 }
+                break;
             }
         }
     }
